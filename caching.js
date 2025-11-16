@@ -9,7 +9,6 @@ const urlsToCache = [
   'favicon.ico',
   'manifest.json',
   'mstile-150x150.png',
-  'reset.html',
   'safari-pinned-tab.svg',
   'tod-128.png',
   'tod-192.png',

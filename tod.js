@@ -512,7 +512,7 @@ $.ajax({
 }).done(function(data) { todData = data; seen = {} });
 
 
-if (navigator.serviceWorker) {
+if (navigator.serviceWorker && 0) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/caching.js', { scope: window.location.pathname })
       .then(registration => {
