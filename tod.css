@@ -1,0 +1,124 @@
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 48px;
+  background-color: black;
+  color: white;
+}
+
+.fade-in-text {
+  animation: fadeIn linear 0.5s;
+  -webkit-animation: fadeIn linear 0.5s;
+}
+
+.fade-out-text {
+  animation: fadeOut linear 0.5s;
+  -webkit-animation: fadeOut linear 0.5s;
+  opacity: 0;
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@-webkit-keyframes fadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@-webkit-keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+#body {
+  height: -webkit-fill-available;
+}
+
+#malefemale {
+  font-family: "Arial Black";
+  margin-right: 30pt;
+  font-size: 56px;
+  margin-top: 35pt;
+}
+
+#statement {
+  height: -webkit-fill-available;
+  text-align: center; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#statement p {
+  margin-left: 40pt;
+  margin-right: 40pt;
+  margin-bottom: 80pt;
+}
+
+#spacer {
+  width: 70pt;
+}
+
+#timer {
+  position: absolute;
+  bottom: 10pt;
+  left: 10pt;
+}
+#later {
+  position: absolute;
+  bottom: 10pt;
+  margin-left: 150pt;
+}
+#next {
+  position: absolute;
+  bottom: 10pt;
+  right: 10pt;
+}
+.td {
+  display: flex;
+  justify-content: center;  /* center p horizontally */
+  align-items: center;      /* center p vertically */
+  height: -webkit-fill-available;
+  text-align: center;
+/*  height: 100%; */
+}
+
+#intro {
+  flex-direction: column;
+}
+.td .rules {
+  font-size: 24px;
+  line-height: 1.5em;
+}
+
+/* Define a custom class for the pseudo-element technique */
+.hit-area-pseudo {
+    position: relative;
+}
+
+/* The pseudo-element will cover the entire button + 10px on all sides */
+.hit-area-pseudo::before {
+    content: '';
+    position: absolute;
+    /* Negative values extend the clickable area outwards */
+    top: -30px;
+    right: -30px;
+    bottom: -30px;
+    left: -30px;
+    /* Make the pseudo-element the active hit target */
+    cursor: pointer;
+    z-index: 10;
+}
+
+/* Ensure the button text/icon remains clickable above the pseudo-element */
+.hit-area-pseudo > button {
+    position: relative;
+    z-index: 20;
+}
+
