@@ -37,35 +37,35 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  event.respondWith(
-    // Try to fetch from the network first.
-    // 1. Check for the Range header
-    var theRequest = event.request;
-    if (event.request.headers.has('range')) {
-      // 2. Clone the request
-      const originalRequest = event.request;
+  // Try to fetch from the network first.
+  // 1. Check for the Range header
+  var theRequest = event.request;
+  if (event.request.headers.has('range')) {
+    // 2. Clone the request
+    const originalRequest = event.request;
 
-      // 3. Create a new Headers object, omitting 'Range'
-      const newHeaders = new Headers();
-      for (const [key, value] of originalRequest.headers.entries()) {
-	if (key.toLowerCase() !== 'range') {
-	  newHeaders.append(key, value);
-	}
+    // 3. Create a new Headers object, omitting 'Range'
+    const newHeaders = new Headers();
+    for (const [key, value] of originalRequest.headers.entries()) {
+      if (key.toLowerCase() !== 'range') {
+	newHeaders.append(key, value);
       }
-
-      // 4. Create a new Request object without the Range header
-      theRequest = new Request(originalRequest.url, {
-	method: originalRequest.method,
-	headers: newHeaders, // Use the new headers
-	mode: originalRequest.mode,
-	credentials: originalRequest.credentials,
-	cache: originalRequest.cache,
-	redirect: originalRequest.redirect,
-	referrer: originalRequest.referrer,
-	referrerPolicy: originalRequest.referrerPolicy,
-	integrity: originalRequest.integrity,
-      });
     }
+
+    // 4. Create a new Request object without the Range header
+    theRequest = new Request(originalRequest.url, {
+      method: originalRequest.method,
+      headers: newHeaders, // Use the new headers
+      mode: originalRequest.mode,
+      credentials: originalRequest.credentials,
+      cache: originalRequest.cache,
+      redirect: originalRequest.redirect,
+      referrer: originalRequest.referrer,
+      referrerPolicy: originalRequest.referrerPolicy,
+      integrity: originalRequest.integrity,
+    });
+  }
+  event.respondWith(
     fetch(theRequest)
       .then(networkResponse => {
 	// If successful, update the cache with the new response.
