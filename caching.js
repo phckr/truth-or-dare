@@ -1,9 +1,9 @@
-const CACHE_NAME = 'tod.gorpli';
+const CACHE_NAME = 'tod.gorpli-1';
 
 const urlsToCache = [
   'apple-touch-icon.png',
   'browserconfig.xml',
-  'click.mp3',
+  new Request('https://tod.gorpli.com/click.mp3'),
   'favicon-16x16.png',
   'favicon-32x32.png',
   'favicon.ico',
@@ -18,7 +18,7 @@ const urlsToCache = [
   'tod-data.json',
   'tod.html',
   'tod.js',
-  'windgong.mp3',
+  new Request('https://tod.gorpli.com/windgong.mp3'),
   "https://code.jquery.com/jquery-3.7.1.min.js",
   "https://code.jquery.com/ui/1.14.1/jquery-ui.min.js",
 ];
