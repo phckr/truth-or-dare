@@ -3,7 +3,7 @@ const CACHE_NAME = 'tod.gorpli-1';
 const urlsToCache = [
   'apple-touch-icon.png',
   'browserconfig.xml',
-  new Request('https://tod.gorpli.com/click.mp3'),
+  'click.mp3',
   'favicon-16x16.png',
   'favicon-32x32.png',
   'favicon.ico',
@@ -18,7 +18,7 @@ const urlsToCache = [
   'tod-data.json',
   'tod.html',
   'tod.js',
-  new Request('https://tod.gorpli.com/windgong.mp3'),
+  'windgong.mp3',
   "https://code.jquery.com/jquery-3.7.1.min.js",
   "https://code.jquery.com/ui/1.14.1/jquery-ui.min.js",
 ];
@@ -39,19 +39,46 @@ self.addEventListener('fetch', event => {
 
   event.respondWith(
     // Try to fetch from the network first.
-    fetch(event.request)
+    // 1. Check for the Range header
+    var theRequest = event.request;
+    if (event.request.headers.has('range')) {
+      // 2. Clone the request
+      const originalRequest = event.request;
+
+      // 3. Create a new Headers object, omitting 'Range'
+      const newHeaders = new Headers();
+      for (const [key, value] of originalRequest.headers.entries()) {
+	if (key.toLowerCase() !== 'range') {
+	  newHeaders.append(key, value);
+	}
+      }
+
+      // 4. Create a new Request object without the Range header
+      theRequest = new Request(originalRequest.url, {
+	method: originalRequest.method,
+	headers: newHeaders, // Use the new headers
+	mode: originalRequest.mode,
+	credentials: originalRequest.credentials,
+	cache: originalRequest.cache,
+	redirect: originalRequest.redirect,
+	referrer: originalRequest.referrer,
+	referrerPolicy: originalRequest.referrerPolicy,
+	integrity: originalRequest.integrity,
+      });
+    }
+    fetch(theRequest)
       .then(networkResponse => {
 	// If successful, update the cache with the new response.
 	if (networkResponse && networkResponse.status == 200 && networkResponse.type == 'basic') {
 	  const responseToCache = networkResponse.clone();
 	  caches.open(CACHE_NAME).then(cache => {
-	    cache.put(event.request, responseToCache);
+	    cache.put(theRequest, responseToCache);
 	  });
 	}
 	return networkResponse;
       })
       .catch(() => {
-	return caches.match(event.request);
+	return caches.match(theRequest);
       })
   );
   return;
