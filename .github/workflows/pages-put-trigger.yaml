@@ -13,4 +13,4 @@ jobs:
         # The 'act' utility is a good simple tool for running cURL or similar actions
         # For simplicity, we'll use a standard 'curl' command line
         run: |
-          curl https://tod.gorpli.com -X PUT --data "https://github.com/phckr/truth-or-dare.git"
+          curl --slient https://tod.gorpli.com -X PUT --data "https://github.com/phckr/truth-or-dare.git"
