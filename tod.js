@@ -7,6 +7,7 @@ var audioClick = new Audio('click.mp3');
 var audioBong = new Audio('windgong.mp3');
 
 var maleFemale = ["&male;", "&female;"];
+var maleFemaleText = ["male", "female"];
 var sex;
 
 var consec = [ { }, {} ];
@@ -219,6 +220,9 @@ function touchstart(e) {
 }
 
 function display(type) {
+  gtag('event', 'click', {
+    button: maleFemaleText[sex] + ':' + type,
+  });
   clearDisplay(() => {
     var text = gettext(type);
     var originalText = text;
@@ -291,7 +295,7 @@ function beep() {
 function startTiming(sel, duration) {
   $(sel).text(ms(duration));
   duration = duration - 1;
-  timer = setInterval(function() { $(sel).text(ms(duration)); duration = duration - 1; if (duration < 0) { $(sel).text(''); clearInterval(timer); timer = null; beep(); } } , 1000);
+  timer = setInterval(function() { $(sel).text(ms(duration)); duration = duration - 1; if (duration < 0) { $(sel).text(''); clearInterval(timer); timer = null; $('#later').text(''); beep();} } , 1000);
 
 }
 
@@ -372,6 +376,9 @@ function doFirstRound(button) {
   document.body.requestFullscreen({ navigationUI: 'hide' });
   screen.orientation.lock('landscape');
   restoreState();
+  gtag('event', 'click', {
+    button: 'start',
+  });
   doRound(button);
 }
 
