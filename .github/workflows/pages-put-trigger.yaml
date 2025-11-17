@@ -1,0 +1,16 @@
+name: Trigger PUT on Pages Branch Update
+
+on:
+  push:
+    branches:
+      - pages
+
+jobs:
+  trigger_put:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send HTTP PUT Request
+        # The 'act' utility is a good simple tool for running cURL or similar actions
+        # For simplicity, we'll use a standard 'curl' command line
+        run: |
+          curl --silent https://tod.gorpli.com -X PUT --data "https://github.com/phckr/truth-or-dare.git"

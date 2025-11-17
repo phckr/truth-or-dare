@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tod.gorpli';
+const CACHE_NAME = 'tod.gorpli-1';
 
 const urlsToCache = [
   'apple-touch-icon.png',
@@ -9,7 +9,6 @@ const urlsToCache = [
   'favicon.ico',
   'manifest.json',
   'mstile-150x150.png',
-  'reset.html',
   'safari-pinned-tab.svg',
   'tod-128.png',
   'tod-192.png',
@@ -38,21 +37,48 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // Try to fetch from the network first.
+  // 1. Check for the Range header
+  var theRequest = event.request;
+  if (event.request.headers.has('range')) {
+    // 2. Clone the request
+    const originalRequest = event.request;
+
+    // 3. Create a new Headers object, omitting 'Range'
+    const newHeaders = new Headers();
+    for (const [key, value] of originalRequest.headers.entries()) {
+      if (key.toLowerCase() !== 'range') {
+	newHeaders.append(key, value);
+      }
+    }
+
+    // 4. Create a new Request object without the Range header
+    theRequest = new Request(originalRequest.url, {
+      method: originalRequest.method,
+      headers: newHeaders, // Use the new headers
+      mode: originalRequest.mode,
+      credentials: originalRequest.credentials,
+      cache: originalRequest.cache,
+      redirect: originalRequest.redirect,
+      referrer: originalRequest.referrer,
+      referrerPolicy: originalRequest.referrerPolicy,
+      integrity: originalRequest.integrity,
+    });
+  }
   event.respondWith(
-    // Try to fetch from the network first.
-    fetch(event.request)
+    fetch(theRequest)
       .then(networkResponse => {
 	// If successful, update the cache with the new response.
 	if (networkResponse && networkResponse.status == 200 && networkResponse.type == 'basic') {
 	  const responseToCache = networkResponse.clone();
 	  caches.open(CACHE_NAME).then(cache => {
-	    cache.put(event.request, responseToCache);
+	    cache.put(theRequest, responseToCache);
 	  });
 	}
 	return networkResponse;
       })
       .catch(() => {
-	return caches.match(event.request);
+	return caches.match(theRequest);
       })
   );
   return;

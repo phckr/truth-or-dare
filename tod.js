@@ -1,5 +1,4 @@
 
-var seen = {};
 var timer;
 var storage = window.localStorage;
 
@@ -7,6 +6,7 @@ var audioClick = new Audio('click.mp3');
 var audioBong = new Audio('windgong.mp3');
 
 var maleFemale = ["&male;", "&female;"];
+var maleFemaleText = ["male", "female"];
 var sex;
 
 var consec = [ { }, {} ];
@@ -22,13 +22,37 @@ var saved;
 
 var rounds = 0;
 
-var noiseWords = ["the", "a", "to", "and", "for", "you", "your", "an", "of", "it", 
-     "what", "where", "would", 
-     "minute", "min", "minutes", "mins", "s", "me", "did", "do", "have", "were", 
-     "partner", "guy", "guys", "boy", "boys", "women", "girls", "girl"];
+var noiseWords = new Set(["the", "a", "to", "and", "for", "you", "your", "an", "of", "it",
+     "what", "where", "would", "her", "his", "my", "on", "that", "etc", "has", "had", "i", "d",
+     "if", "is", "in", "man", "woman", "ve",
+     "minute", "min", "minutes", "mins", "s", "me", "did", "do", "have", "were",
+     "partner", "guy", "guys", "boy", "boys", "women", "girls", "girl"]);
 
 function saveScore(text, val) {
   storage.setItem(compress(text), val);
+}
+
+function saveState() {
+  const state = {
+    'rounds': rounds,
+    'sex': sex,
+    'consec': consec,
+  };
+  storage.setItem('tod:state', JSON.stringify(state));
+}
+
+function restoreState() {
+  const states = storage.getItem('tod:state');
+  var state;
+  if (states) {
+    state = JSON.parse(states);
+  } else {
+    state = {};
+  }
+
+  rounds = state.rounds || 0;
+  sex = state.sex || 0;
+  consec = state.consec || [{}, {}];
 }
 
 function loadScore(text) {
@@ -52,15 +76,17 @@ function getWordScore(type, word) {
 
 function getWords(text) {
   var words = new Set(text.replaceAll("'", "").toLowerCase().match(/\b(\w+)\b/g));
-  for (var i = 0; i < noiseWords.length; i++) {
-    words.delete(noiseWords[i]);
-  }  
+  words = new Set([...words].filter(element => !noiseWords.has(element)));
   return Array.from(words);
 }
 
 function getScore(type, text) {
   var words = getWords(text);
   var score = 0;
+
+  if (!words.length) {
+    return 0;
+  }
 
   for (var i = 0; i < words.length; i++) {
     score += getWordScore(type, words[i]);
@@ -120,57 +146,35 @@ function sexOk(text) {
 
 function gettext(type) {
   if (type == 'saved') {
-    var i = Math.floor(Math.random() * saved.length);
-    var res = saved.splice(i, 1)[0];
+    const savedsex = saved[sex];
+    var i = Math.floor(Math.random() * saveds.length);
+    var res = saveds.splice(i, 1)[0];
     storage.setItem('tod:Saved', JSON.stringify(saved));
     return res;
   }
-  if (1) {
-    var scores = [];
-    for (var i = 0; i < todData[type].length; i++) {
-      scores.push(getScore(type, todData[type][i]));
-    }
-    var total = scores.reduce((a, b) => a + b, 0);
-    while (1) {
-      var offset = total * Math.random();
-      for (var i = 0; i < scores.length - 1; i++) {
-	offset -= scores[i];
-	if (offset <= 0) {
-	  break;
-	}
-      }
-      var q = sexOk(todData[type][i]);
-      if (q) {
-        updateScore(type, q);
-        return q;
-      }
-    }
-  } else {
-    if (!seen[type]) {
-      var factor = [];
-      for (var i = 0; i < todData[type].length; i++) {
-	factor.push(loadScore(todData[type][i]));
-      }
-      seen[type] = factor;
-    }
-
-    // Compute weight
-    var total = seen[type].reduce((a, b) => a + b, 0);
+  var scores = [];
+  for (var i = 0; i < todData[type].length; i++) {
+    scores.push(getScore(type, todData[type][i]));
+  }
+  var total = scores.reduce((a, b) => a + b, 0);
+  while (1) {
     var offset = total * Math.random();
-    for (var i = 0; i < seen[type].length - 1; i++) {
-      offset -= seen[type][i];
+    for (var i = 0; i < scores.length - 1; i++) {
+      offset -= scores[i];
       if (offset <= 0) {
 	break;
       }
     }
-    seen[type][i] /= Math.sqrt(seen[type].length);
-    saveScore(todData[type][i], seen[type][i]);
-    return todData[type][i];
+    var q = sexOk(todData[type][i]);
+    if (q) {
+      updateScore(type, q);
+      return q;
+    }
   }
 }
 
 function doSave(type, text) {
-  saved.push(text);
+  saved[sex].push(text);
   storage.setItem('tod:Saved', JSON.stringify(saved));
   doRound('Later');
 }
@@ -195,6 +199,9 @@ function touchstart(e) {
 }
 
 function display(type) {
+  gtag('event', 'click', {
+    button: maleFemaleText[sex] + ':' + type,
+  });
   clearDisplay(() => {
     var text = gettext(type);
     var originalText = text;
@@ -209,7 +216,7 @@ function display(type) {
     var duration = Math.floor((Math.random() + 1)**2 * 30);
     if (found) {
       duration = found.groups.t * (found.groups.u.startsWith('m') ? 60 : 1);
-    } 
+    }
 
     if (text.endsWith('=')) {
       duration = 0;
@@ -267,13 +274,17 @@ function beep() {
 function startTiming(sel, duration) {
   $(sel).text(ms(duration));
   duration = duration - 1;
-  timer = setInterval(function() { $(sel).text(ms(duration)); duration = duration - 1; if (duration < 0) { $(sel).text(''); clearInterval(timer); timer = null; beep(); } } , 1000);
-  
+  timer = setInterval(function() { $(sel).text(ms(duration)); duration = duration - 1; if (duration < 0) { $(sel).text(''); clearInterval(timer); timer = null; $('#later').text(''); beep();} } , 1000);
+
+}
+
+function getSexContents() {
+  return maleFemale[1 - sex] + "<span>&nbsp;asks&nbsp;</span>" + maleFemale[sex];
 }
 
 function flipSex() {
   sex = 1 - sex;
-  $('#malefemale').html(maleFemale[sex]);
+  $('#malefemale').html(getSexContents());
   setEnabledToD();
 }
 
@@ -301,31 +312,41 @@ function setEnabledToD() {
 }
 
 function doRound(button, type) {
-  if (button != 'Later') {
+  if (button != 'Later' && type) {
     if (consec[sex][type]) {
       consec[sex][type]++;
     } else {
       consec[sex] = { };
       consec[sex][type] = 1;
     }
-  }  
+  }
   if (timer) {
     clearInterval(timer);
     timer = null;
   }
-  if (button != "Later") {
+  if (button && button != "Later") {
     sex = 1 - sex;
   }
+  saveState();
   rounds = rounds + 1;
   clearDisplay(() => {
     // Now put up 'Truth' and 'Dare'
-    var div = $('<div class="td fade-in-text"><p id=malefemale class="hit-area-pseudo quick-click" onclick="flipSex();">' + maleFemale[sex] + '</p><p class="hit-area-pseudo quick-click" id=truth onclick="display(\'truth\');">Truth</p><p id=spacer></p><p id=dare class="hit-area-pseudo quick-click" onclick="display(\'dare\');">Dare</p></div>');
+    var first_round_only;
+    if (rounds == 1) {
+      first_round_only = 'class="hit-area-pseudo quick-click" onclick="flipSex();"';
+    } else {
+      first_round_only = '';
+    }
+    var div = $('<div class="td fade-in-text"><p id=malefemale ' + first_round_only + '>' + getSexContents() + '</p><p id=alwaysspacer></p><p class="hit-area-pseudo quick-click" id=truth onclick="display(\'truth\');">Truth</p><p id=spacer></p><p id=dare class="hit-area-pseudo quick-click" onclick="display(\'dare\');">Dare</p></div>');
 
     $('#body').append(div);
 
-    if (saved && saved.length > 0) {
-      var c = saved.length;
-      $(div).append($('<p id=spacer></p><p class="hit-area-pseudo quick-click" onclick="display(\'saved\');">' + c + ' Saved</p>'));
+    if (saved) {
+      const saveds = saved[sex];
+      if (saveds && saveds.length > 0) {
+	var c = saveds.length;
+	$(div).append($('<p id=spacer></p><p class="hit-area-pseudo quick-click" onclick="display(\'saved\');">' + c + ' Saved</p>'));
+      }
     }
 
     setEnabledToD();
@@ -337,6 +358,10 @@ function doRound(button, type) {
 function doFirstRound(button) {
   document.body.requestFullscreen({ navigationUI: 'hide' });
   screen.orientation.lock('landscape');
+  restoreState();
+  gtag('event', 'click', {
+    button: 'start',
+  });
   doRound(button);
 }
 
@@ -355,7 +380,7 @@ function doStart() {
     }
 
 
-    $('#body').append($('<div id="intro" class="td fade-in-text"><div><p class="hit-area-pseudo quick-click" onclick="doFirstRound(\'Play\');">Play Truth or Dare!</p>\
+    $('#body').append($('<div id="intro" class="td fade-in-text"><div><p class="hit-area-pseudo quick-click" onclick="doFirstRound();">Play Truth or Dare!</p>\
 	   <p class="rules">&female; means the woman is asked "Truth or Dare" and responds.<br>\
 	                    No more than three truths (or dares) per person in a row.<br>\
 			    A timer can be started for time-limited dares.<br>\
@@ -368,18 +393,137 @@ function doStart() {
     saved = storage.getItem("tod:Saved");
     if (saved) {
       saved = JSON.parse(saved);
+      if (saved.length != 2) {
+        saved = [[], []];
+      }
     } else {
-      saved = [];
+      saved = [[], []];
     }
+    restoreState();
   });
+}
+
+function addKeyboardHandler() {
+  document.addEventListener('keydown', (event) => {
+    // 1. Get ALL potential quick-click elements
+    const allQuickClickElements = document.querySelectorAll('.quick-click');
+
+    // 2. Filter the elements to only include those that are visible
+    const quickClickElements = Array.from(allQuickClickElements).filter(element => {
+        // A helper function to check if an element is visible
+        return isElementVisible(element);
+    });
+
+    // Helper function definition: Checks various ways an element can be hidden
+    function isElementVisible(el) {
+        // Check for common CSS properties that hide elements
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden') {
+            return false;
+        }
+
+        // Check for elements with no width or height (e.g., collapsed or hidden by layout)
+        if (el.offsetWidth === 0 || el.offsetHeight === 0) {
+            return false;
+        }
+
+        // Check if the element itself or any of its parents are hidden via the 'hidden' attribute
+        let current = el;
+        while (current) {
+            if (current.hasAttribute('hidden')) {
+                return false;
+            }
+            // Stop checking at the document body
+            if (current === document.body) break;
+            current = current.parentElement;
+        }
+
+        return true;
+    }
+
+    // If there are no elements to click, exit the handler
+    if (quickClickElements.length === 0) {
+        return;
+    }
+
+    // Convert the key to lowercase for case-insensitive comparison
+    const key = event.key.toLowerCase();
+
+    // Flag to prevent default browser actions (like scrolling with space)
+    let handled = false;
+
+    if (key === ' ' || key == 'arrowright') {
+        // --- 1. Space Bar Logic ---
+        // Space should trigger the 'click' action on the first item
+        quickClickElements[0].click();
+        handled = true;
+    } else if (key.length === 1 && key.match(/[a-z]/)) {
+        // --- 2. Letter Key Logic ---
+        // Check if the key is a single letter (a-z)
+
+        // Find the first element whose innerText starts with the pressed letter
+        const targetElement = Array.from(quickClickElements).find(element => {
+            const innerText = element.innerText.trim();
+            if (innerText.length > 0) {
+                // Check if the first character of the text matches the key
+                return innerText.charAt(0).toLowerCase() === key;
+            }
+            return false;
+        });
+
+        if (targetElement) {
+            targetElement.click();
+            handled = true;
+        }
+    }
+
+    // Prevent default browser actions if we handled a key
+    if (handled) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+});
 }
 
 $(document).ready(doStart);
 
+$(document).ready(addKeyboardHandler);
+
+function computeNoiseType(d, counts) {
+  for (var i = 0; i < d.length; i++) {
+    var words = new Set(d[i].replaceAll("'", "").toLowerCase().match(/\b(\w+)\b/g));
+    for (const item of words) {
+      counts[item] = 1 + (counts[item] || 0);
+    }
+  }
+}
+
+function getTopPropertiesByCount(countsObject, topN = 30) {
+  const entries = Object.entries(countsObject);
+
+  entries.sort((a, b) => {
+    return b[1] - a[1]; // Descending sort (largest count first)
+  });
+
+  const topResults = entries.slice(0, topN);
+
+  return topResults;
+}
+
+function computeNoise(data) {
+  var counts = {};
+  computeNoiseType(data['truth'], counts);
+  computeNoiseType(data['dare'], counts);
+  var result = getTopPropertiesByCount(counts, 50);
+  for (var i = 0; i < result.length; i++) {
+    noiseWords.add(result[i][0]);
+  }
+}
+
 $.ajax({
   url: "/tod-data.json",
   dataType: 'JSON',
-}).done(function(data) { todData = data; seen = {} });
+}).done(function(data) { todData = data; computeNoise(data); });
 
 
 if (navigator.serviceWorker) {
