@@ -2,8 +2,7 @@
 var timer;
 var storage = window.localStorage;
 
-var audioClick = new Audio('click.mp3');
-var audioBong = new Audio('windgong.mp3');
+var audio = {};
 
 var maleFemale = ["&male;", "&female;"];
 var maleFemaleText = ["male", "female"];
@@ -263,12 +262,19 @@ function ms(d) {
   return m + "m " + s + "s";
 }
 
+function get_audio(url) {
+}
+
 function click() {
-  audioClick.play();
+  if (audio.click) {
+    audio.click.play();
+  }
 }
 
 function beep() {
-  audioBong.play();
+  if (audio.bong) {
+    audio.bong.play();
+  }
 }
 
 function startTiming(sel, duration) {
@@ -370,6 +376,65 @@ function doReset() {
   doStart();
 }
 
+/**
+ * Fetches an audio file, converts it to a Data URL, and creates an Audio object.
+ *
+ * @param {string} url - The URL of the audio file (e.g., 'sound.mp3').
+ */
+async function createAudioFromUrl(url) {
+  try {
+    // 1. Fetch the data from the URL
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    // 2. Get the response body as a raw ArrayBuffer
+    const arrayBuffer = await response.arrayBuffer();
+    const contentType = response.headers.get('content-type');
+
+    if (!contentType || !contentType.startsWith('audio/')) {
+        console.error('Fetched file is not an audio file or content-type is missing/incorrect.');
+        return null;
+    }
+
+    // 3. Convert ArrayBuffer to a Base64 string
+    // A Uint8Array view is used to iterate over the bytes.
+    const base64String = arrayBufferToBase64(arrayBuffer);
+
+    // 4. Construct the Data URL (e.g., 'data:audio/mpeg;base64,...')
+    const dataUrl = `data:${contentType};base64,${base64String}`;
+
+    // 5. Wrap the Data URL in a new Audio object
+    const audio = new Audio(dataUrl);
+
+    return audio;
+  } catch (error) {
+    console.error('❌ Failed to create Audio object:', error);
+    return null;
+  }
+}
+
+/**
+ * Helper function to convert an ArrayBuffer to a Base64 string.
+ * This is necessary because Data URLs require Base64 encoding for the data payload.
+ *
+ * @param {ArrayBuffer} buffer - The raw binary data.
+ * @returns {string} The Base64 encoded string.
+ */
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    // String.fromCharCode converts the byte value to the corresponding character
+    binary += String.fromCharCode(bytes[i]);
+  }
+  // btoa() encodes a string in base-64
+  return btoa(binary);
+}
+
 function doStart() {
   clearDisplay(() => {
     // Now put up 'Truth' and 'Dare'
@@ -401,6 +466,8 @@ function doStart() {
     }
     restoreState();
   });
+  (async () => { audio.click = await createAudioFromUrl('click.mp3'); })();
+  (async () => { audio.bong = await createAudioFromUrl('windgong.mp3'); })();
 }
 
 function addKeyboardHandler() {
