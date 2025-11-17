@@ -1,5 +1,4 @@
 
-var seen = {};
 var timer;
 var storage = window.localStorage;
 
@@ -23,10 +22,11 @@ var saved;
 
 var rounds = 0;
 
-var noiseWords = ["the", "a", "to", "and", "for", "you", "your", "an", "of", "it",
-     "what", "where", "would",
+var noiseWords = new Set(["the", "a", "to", "and", "for", "you", "your", "an", "of", "it",
+     "what", "where", "would", "her", "his", "my", "on", "that", "etc", "has", "had", "i", "d",
+     "if", "is", "in", "man", "woman", "ve",
      "minute", "min", "minutes", "mins", "s", "me", "did", "do", "have", "were",
-     "partner", "guy", "guys", "boy", "boys", "women", "girls", "girl"];
+     "partner", "guy", "guys", "boy", "boys", "women", "girls", "girl"]);
 
 function saveScore(text, val) {
   storage.setItem(compress(text), val);
@@ -76,15 +76,17 @@ function getWordScore(type, word) {
 
 function getWords(text) {
   var words = new Set(text.replaceAll("'", "").toLowerCase().match(/\b(\w+)\b/g));
-  for (var i = 0; i < noiseWords.length; i++) {
-    words.delete(noiseWords[i]);
-  }
+  words = new Set([...words].filter(element => !noiseWords.has(element)));
   return Array.from(words);
 }
 
 function getScore(type, text) {
   var words = getWords(text);
   var score = 0;
+
+  if (!words.length) {
+    return 0;
+  }
 
   for (var i = 0; i < words.length; i++) {
     score += getWordScore(type, words[i]);
@@ -150,47 +152,24 @@ function gettext(type) {
     storage.setItem('tod:Saved', JSON.stringify(saved));
     return res;
   }
-  if (1) {
-    var scores = [];
-    for (var i = 0; i < todData[type].length; i++) {
-      scores.push(getScore(type, todData[type][i]));
-    }
-    var total = scores.reduce((a, b) => a + b, 0);
-    while (1) {
-      var offset = total * Math.random();
-      for (var i = 0; i < scores.length - 1; i++) {
-	offset -= scores[i];
-	if (offset <= 0) {
-	  break;
-	}
-      }
-      var q = sexOk(todData[type][i]);
-      if (q) {
-        updateScore(type, q);
-        return q;
-      }
-    }
-  } else {
-    if (!seen[type]) {
-      var factor = [];
-      for (var i = 0; i < todData[type].length; i++) {
-	factor.push(loadScore(todData[type][i]));
-      }
-      seen[type] = factor;
-    }
-
-    // Compute weight
-    var total = seen[type].reduce((a, b) => a + b, 0);
+  var scores = [];
+  for (var i = 0; i < todData[type].length; i++) {
+    scores.push(getScore(type, todData[type][i]));
+  }
+  var total = scores.reduce((a, b) => a + b, 0);
+  while (1) {
     var offset = total * Math.random();
-    for (var i = 0; i < seen[type].length - 1; i++) {
-      offset -= seen[type][i];
+    for (var i = 0; i < scores.length - 1; i++) {
+      offset -= scores[i];
       if (offset <= 0) {
 	break;
       }
     }
-    seen[type][i] /= Math.sqrt(seen[type].length);
-    saveScore(todData[type][i], seen[type][i]);
-    return todData[type][i];
+    var q = sexOk(todData[type][i]);
+    if (q) {
+      updateScore(type, q);
+      return q;
+    }
   }
 }
 
@@ -299,9 +278,13 @@ function startTiming(sel, duration) {
 
 }
 
+function getSexContents() {
+  return maleFemale[1 - sex] + "<span>&nbsp;asks&nbsp;</span>" + maleFemale[sex];
+}
+
 function flipSex() {
   sex = 1 - sex;
-  $('#malefemale').html(maleFemale[sex]);
+  $('#malefemale').html(getSexContents());
   setEnabledToD();
 }
 
@@ -354,7 +337,7 @@ function doRound(button, type) {
     } else {
       first_round_only = '';
     }
-    var div = $('<div class="td fade-in-text"><p id=malefemale ' + first_round_only + '>' + maleFemale[sex] + '</p><p class="hit-area-pseudo quick-click" id=truth onclick="display(\'truth\');">Truth</p><p id=spacer></p><p id=dare class="hit-area-pseudo quick-click" onclick="display(\'dare\');">Dare</p></div>');
+    var div = $('<div class="td fade-in-text"><p id=malefemale ' + first_round_only + '>' + getSexContents() + '</p><p id=alwaysspacer></p><p class="hit-area-pseudo quick-click" id=truth onclick="display(\'truth\');">Truth</p><p id=spacer></p><p id=dare class="hit-area-pseudo quick-click" onclick="display(\'dare\');">Dare</p></div>');
 
     $('#body').append(div);
 
@@ -506,10 +489,41 @@ $(document).ready(doStart);
 
 $(document).ready(addKeyboardHandler);
 
+function computeNoiseType(d, counts) {
+  for (var i = 0; i < d.length; i++) {
+    var words = new Set(d[i].replaceAll("'", "").toLowerCase().match(/\b(\w+)\b/g));
+    for (const item of words) {
+      counts[item] = 1 + (counts[item] || 0);
+    }
+  }
+}
+
+function getTopPropertiesByCount(countsObject, topN = 30) {
+  const entries = Object.entries(countsObject);
+
+  entries.sort((a, b) => {
+    return b[1] - a[1]; // Descending sort (largest count first)
+  });
+
+  const topResults = entries.slice(0, topN);
+
+  return topResults;
+}
+
+function computeNoise(data) {
+  var counts = {};
+  computeNoiseType(data['truth'], counts);
+  computeNoiseType(data['dare'], counts);
+  var result = getTopPropertiesByCount(counts, 50);
+  for (var i = 0; i < result.length; i++) {
+    noiseWords.add(result[i][0]);
+  }
+}
+
 $.ajax({
   url: "/tod-data.json",
   dataType: 'JSON',
-}).done(function(data) { todData = data; seen = {} });
+}).done(function(data) { todData = data; computeNoise(data); });
 
 
 if (navigator.serviceWorker) {
