@@ -197,6 +197,12 @@ function touchstart(e) {
   $(e.currentTarget).trigger('click');
 }
 
+function firstTouchStart(e) {
+  e.preventDefault();
+  click();
+  doFirstRound();
+}
+
 function display(type) {
   gtag('event', 'click', {
     button: maleFemaleText[sex] + ':' + type,
@@ -445,13 +451,14 @@ function doStart() {
     }
 
 
-    $('#body').append($('<div id="intro" class="td fade-in-text"><div><p class="hit-area-pseudo quick-click" onclick="doFirstRound();">Play Truth or Dare!</p>\
+    $('#body').append($('<div id="intro" class="td fade-in-text"><div><p class="hit-area-pseudo first-quick-click" onclick="doFirstRound();">Play Truth or Dare!</p>\
 	   <p class="rules">&male; asks &female; means the woman is asked "Truth or Dare" and responds.<br>\
 	                    No more than three truths (or dares) per person in a row.<br>\
 			    A timer can be started for time-limited dares.<br>\
 	                    Dares can only be deferred to "Later" by mutual agreement.</p>' +
            '<p class="rules">Best played on a tablet. Use touch to select options.</p>' + extra + '</div></div>'));
     $('.quick-click').on('touchstart', touchstart);
+    $('.first-quick-click').on('touchstart', firstTouch);
 
     sex = Math.floor(Math.random() * 2);
 
