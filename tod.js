@@ -458,7 +458,7 @@ function doStart() {
 	                    Dares can only be deferred to "Later" by mutual agreement.</p>' +
            '<p class="rules">Best played on a tablet. Use touch to select options.</p>' + extra + '</div></div>'));
     $('.quick-click').on('touchstart', touchstart);
-    $('.first-quick-click').on('touchstart', firstTouch);
+    $('.first-quick-click').on('touchstart', firstTouchStart);
 
     sex = Math.floor(Math.random() * 2);
 
